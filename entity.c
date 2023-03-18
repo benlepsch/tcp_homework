@@ -66,12 +66,18 @@ void debug_pkt(struct pkt p)
 */
 int checksum(struct pkt packet) 
 {
-    int sum, i;
+    int sum, i, l;
 
+    if(packet.length > 20) {
+        l = 20;
+    }
+    else {
+        l = packet.length;
+    }
     sum = packet.seqnum;
     sum += packet.acknum;
-
-    for (i = 0; i < packet.length; i++)
+    sum += packet.length;
+    for (i = 0; i < l; i++)
         sum += packet.payload[i];
 
     return sum;
@@ -82,8 +88,12 @@ struct pkt message_to_packet(struct msg message, int seqnum, int acknum)
     struct pkt p;
     p.seqnum = seqnum;
     p.acknum = acknum;
-    p.length = message.length;
-
+    if(message.length > 20) {
+        p.length = 20;
+    }
+    else {
+        p.length = message.length;
+    }
     int i;
     for (i = 0; i < p.length; i++)
         p.payload[i] = message.data[i];
@@ -97,7 +107,9 @@ struct msg packet_to_message(struct pkt packet)
 {
     struct msg m;
     m.length = packet.length;
-
+    if(m.length > 20) {
+        m.length = 20;
+    }
     int i;
     for (i = 0; i < m.length; i++) 
         m.data[i] = packet.payload[i];
@@ -237,6 +249,10 @@ void A_input(struct pkt packet)
         printf("A Recieved corrupted\n");
         return;
     }
+    if(packet.acknum > A_seqnum + 1) {
+        printf("packet had acknum %i which is greater than our seqnum + 1: %i\n", packet.acknum, A_seqnum + 1);
+        return;
+    }
     if (packet.seqnum != A_receievedseqnumfromB){
         printf("A doesn't want this packet %i\n", packet.seqnum);
         return;
@@ -374,7 +390,7 @@ void B_timerinterrupt()
     p.checksum = checksum(p);
     printf("RESENDING FROM B ACK: %i\n",p.acknum);
     tolayer3_B(p);
-    if(A_buffer->size > 0){
+    if(A_buffer->size > 0 /*&& loops < 1000*/){
         //B_loops = B_loops + 1;
         stoptimer_B();
         starttimer_B(B_TIMER_LEN);
