@@ -199,12 +199,12 @@ struct pkt peek(queue *q) {
 /**** A ENTITY ****/
 
 #define A_TIMER_LEN 2000.0
-#define BUFSIZE 8
+#define BUFSIZE 1000
 
 int A_seqnum, A_acknum, A_receievedseqnumfromB, A_receivedacknumfromB;
 queue * A_buffer;
 
-int loops,B_loops;
+int loops;
 
 
 
@@ -246,7 +246,7 @@ void A_input(struct pkt packet)
     //printf("A Looking for %i, got %i\n", A_receievedseqnumfromB,packet.seqnum);
     
     if(checksum(packet) != packet.checksum) {
-        printf("A Recieved corrupted\n");
+        //printf("A Recieved corrupted\n");
         return;
     }
     if(packet.acknum > A_seqnum + 1) {
@@ -257,11 +257,11 @@ void A_input(struct pkt packet)
         printf("A doesn't want this packet %i\n", packet.seqnum);
         return;
     }
-    printf("A RECEIVED PACKET:\n");
-    debug_pkt(packet);
+    //printf("A RECEIVED PACKET:\n");
+    //debug_pkt(packet);
     while(!isempty(A_buffer) && peek(A_buffer).seqnum < packet.acknum) {
         
-        printf("A Just dequeued this: \n");
+        //printf("A Just dequeued this: \n");
         debug_pkt(dequeue(A_buffer));
         //printf("%i\n",peek(A_buffer).seqnum);
         //printf("size: %i\n",A_buffer->size);
@@ -309,8 +309,8 @@ void A_timerinterrupt()
     //printf("TIMER INTERRUPT AUUUUUUUUUUGH\n");
     if(A_buffer->size != 0 /*&& loops < 1000*/) {
         loops = loops + 1;
-        printf("BUFFER ************************** A_receivedacknumfromB: %i\n", A_receivedacknumfromB);
-        printq(A_buffer);
+        //printf("BUFFER ************************** A_receivedacknumfromB: %i\n", A_receivedacknumfromB);
+        //printq(A_buffer);
         starttimer_A(A_TIMER_LEN);
     }
     else {
@@ -330,7 +330,6 @@ void B_init()
     B_receievedseqnumfromA = 1;
     B_seqnum = 1;
     B_acknum = 1;
-    B_loops = 0;
 }
 
 /**
@@ -346,17 +345,17 @@ void B_input(struct pkt packet)
     if (packet.seqnum != B_acknum)
         return;*/
     
-    printf("B Looking for %i, got %i\n", B_receievedseqnumfromA,packet.seqnum);
+    //printf("B Looking for %i, got %i\n", B_receievedseqnumfromA,packet.seqnum);
     if(checksum(packet) != packet.checksum) {
-        printf("B Recieved corrupted\n");
+        //printf("B Recieved corrupted\n");
         return;
     }
     if (packet.seqnum != B_receievedseqnumfromA){
-        printf("B doesn't want this packet %i\n", packet.seqnum);
+        //printf("B doesn't want this packet %i\n", packet.seqnum);
         return;
     }
-    printf("B RECEIVED PACKET:\n");
-    debug_pkt(packet);
+    //printf("B RECEIVED PACKET:\n");
+    //debug_pkt(packet);
     // send packet data to file
     struct msg m = packet_to_message(packet);
     tolayer5_B(m);
@@ -388,10 +387,9 @@ void B_timerinterrupt()
     p.acknum = B_receievedseqnumfromA;
     p.length = 0;
     p.checksum = checksum(p);
-    printf("RESENDING FROM B ACK: %i\n",p.acknum);
+    //printf("RESENDING FROM B ACK: %i\n",p.acknum);
     tolayer3_B(p);
     if(A_buffer->size > 0 /*&& loops < 1000*/){
-        //B_loops = B_loops + 1;
         stoptimer_B();
         starttimer_B(B_TIMER_LEN);
     }
