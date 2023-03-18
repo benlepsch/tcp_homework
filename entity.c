@@ -262,7 +262,12 @@ void A_input(struct pkt packet)
     while(!isempty(A_buffer) && peek(A_buffer).seqnum < packet.acknum) {
         
         //printf("A Just dequeued this: \n");
-        debug_pkt(dequeue(A_buffer));
+        
+        
+        //debug_pkt(dequeue(A_buffer));
+        dequeue(A_buffer);
+
+
         //printf("%i\n",peek(A_buffer).seqnum);
         //printf("size: %i\n",A_buffer->size);
     }
@@ -371,8 +376,8 @@ void B_input(struct pkt packet)
     p.checksum = checksum(p);
 
     tolayer3_B(p);
-    printf("//////////////////////");
-    printf("Just sent ACK: %i\n", p.acknum);
+    //printf("//////////////////////");
+    //printf("Just sent ACK: %i\n", p.acknum);
     stoptimer_B();
     starttimer_B(B_TIMER_LEN);
 }
