@@ -387,8 +387,4 @@ void B_timerinterrupt()
     p.checksum = checksum(p);
     
     tolayer3_B(p);
-    if(A_buffer->size > 0){
-        stoptimer_B();
-        starttimer_B(B_TIMER_LEN);
-    }
 }
