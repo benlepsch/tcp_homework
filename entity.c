@@ -4,8 +4,8 @@
 /*                                                                            */
 /******************************************************************************/
 
-// Student names:
-// Student computing IDs:
+// Student names: ben lepsch
+// Student computing IDs: btl9zu
 //
 //
 // This file contains the actual code for the functions that will implement the
@@ -205,7 +205,7 @@ int A_seqnum, A_acknum, A_receievedseqnumfromB, A_receivedacknumfromB;
 queue * A_buffer;
 
 int loops;
-
+int finished;
 
 
 /**
@@ -213,6 +213,7 @@ int loops;
 */
 void A_init() 
 {
+    finished = 0;
     loops = 0;
     A_seqnum = 1;
     A_acknum = 1;
@@ -321,6 +322,7 @@ void A_timerinterrupt()
     else {
         printf("buffersize:%i",A_buffer->size);
         printf("DONE!!!");
+        stoptimer_A();
     }
 }
 
@@ -329,12 +331,13 @@ void A_timerinterrupt()
 
 #define B_TIMER_LEN 1000.0
 int B_seqnum, B_acknum, B_receievedseqnumfromA;
-
+int nC;
 void B_init() 
 {
     B_receievedseqnumfromA = 1;
     B_seqnum = 1;
     B_acknum = 1;
+    nC = 0;
 }
 
 /**
@@ -349,7 +352,7 @@ void B_input(struct pkt packet)
     /*
     if (packet.seqnum != B_acknum)
         return;*/
-    
+    nC = 0;
     //printf("B Looking for %i, got %i\n", B_receievedseqnumfromA,packet.seqnum);
     if(checksum(packet) != packet.checksum) {
         //printf("B Recieved corrupted\n");
@@ -387,6 +390,11 @@ void B_input(struct pkt packet)
 */
 void B_timerinterrupt() 
 {
+    if (nC > 30) {
+        stoptimer_B();
+        return;
+    }
+    nC ++;
     struct pkt p;
     p.seqnum = 1;
     p.acknum = B_receievedseqnumfromA;
