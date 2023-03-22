@@ -328,10 +328,11 @@ void A_timerinterrupt()
 /**** B ENTITY ****/
 
 #define B_TIMER_LEN 1000.0
-int B_seqnum, B_acknum, B_receievedseqnumfromA;
+int B_seqnum, B_acknum, B_receievedseqnumfromA,timer_count;
 
 void B_init() 
 {
+    timer_count = 0;
     B_receievedseqnumfromA = 1;
     B_seqnum = 1;
     B_acknum = 1;
@@ -345,6 +346,7 @@ void B_init()
 
 void B_input(struct pkt packet) 
 {
+    timer_count = 0;
     // debug_pkt(packet);
     /*
     if (packet.seqnum != B_acknum)
@@ -387,6 +389,7 @@ void B_input(struct pkt packet)
 */
 void B_timerinterrupt() 
 {
+    timer_count = timer_count + 1;
     struct pkt p;
     p.seqnum = 1;
     p.acknum = B_receievedseqnumfromA;
@@ -394,10 +397,11 @@ void B_timerinterrupt()
     p.checksum = checksum(p);
     //printf("RESENDING FROM B ACK: %i\n",p.acknum);
     tolayer3_B(p);
-    if(A_buffer->size > 0 /*&& loops < 1000*/){
+    if(/*A_buffer->size > 0 && loops < 1000 && */timer_count < 30){
         stoptimer_B();
         starttimer_B(B_TIMER_LEN);
     }
+
 }
 
 
