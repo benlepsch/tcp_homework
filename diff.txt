@@ -1,0 +1,46 @@
+[1mdiff --git a/entity.c b/entity.c[m
+[1mindex 1bc0376..5360fed 100755[m
+[1m--- a/entity.c[m
+[1m+++ b/entity.c[m
+[36m@@ -328,10 +328,11 @@[m [mvoid A_timerinterrupt()[m
+ /**** B ENTITY ****/[m
+ [m
+ #define B_TIMER_LEN 1000.0[m
+[31m-int B_seqnum, B_acknum, B_receievedseqnumfromA;[m
+[32m+[m[32mint B_seqnum, B_acknum, B_receievedseqnumfromA,timer_count;[m
+ [m
+ void B_init() [m
+ {[m
+[32m+[m[32m    timer_count = 0;[m
+     B_receievedseqnumfromA = 1;[m
+     B_seqnum = 1;[m
+     B_acknum = 1;[m
+[36m@@ -345,6 +346,7 @@[m [mvoid B_init()[m
+ [m
+ void B_input(struct pkt packet) [m
+ {[m
+[32m+[m[32m    timer_count = 0;[m
+     // debug_pkt(packet);[m
+     /*[m
+     if (packet.seqnum != B_acknum)[m
+[36m@@ -387,6 +389,7 @@[m [mvoid B_input(struct pkt packet)[m
+ */[m
+ void B_timerinterrupt() [m
+ {[m
+[32m+[m[32m    timer_count = timer_count + 1;[m
+     struct pkt p;[m
+     p.seqnum = 1;[m
+     p.acknum = B_receievedseqnumfromA;[m
+[36m@@ -394,10 +397,11 @@[m [mvoid B_timerinterrupt()[m
+     p.checksum = checksum(p);[m
+     //printf("RESENDING FROM B ACK: %i\n",p.acknum);[m
+     tolayer3_B(p);[m
+[31m-    if(A_buffer->size > 0 /*&& loops < 1000*/){[m
+[32m+[m[32m    if(/*A_buffer->size > 0 && loops < 1000 && */timer_count < 30){[m
+         stoptimer_B();[m
+         starttimer_B(B_TIMER_LEN);[m
+     }[m
+[32m+[m
+ }[m
+ [m
+ [m

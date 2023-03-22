@@ -4,66 +4,20 @@
 /*                                                                            */
 /******************************************************************************/
 
-// Student names:
-// Student computing IDs:
+// Student names: Asher Saunders
+// Student computing IDs: aas9x
 //
-//
-// This file contains the actual code for the functions that will implement the
-// reliable transport protocols enabling entity "A" to reliably send information
-// to entity "B".
-//
-// This is where you should write your code, and you should submit a modified
-// version of this file.
-//
-// Notes:
-// - One way network delay averages five time units (longer if there are other
-//   messages in the channel for GBN), but can be larger.
-// - Packets can be corrupted (either the header or the data portion) or lost,
-//   according to user-defined probabilities entered as command line arguments.
-// - Packets will be delivered in the order in which they were sent (although
-//   some can be lost).
-// - You may have global state in this file, BUT THAT GLOBAL STATE MUST NOT BE
-//   SHARED BETWEEN THE TWO ENTITIES' FUNCTIONS. "A" and "B" are simulating two
-//   entities connected by a network, and as such they cannot access each
-//   other's variables and global state. Entity "A" can access its own state,
-//   and entity "B" can access its own state, but anything shared between the
-//   two must be passed in a `pkt` across the simulated network. Violating this
-//   requirement will result in a very low score for this project (or a 0).
-//
-// To run this project you should be able to compile it with something like:
-//
-//     $ gcc entity.c simulator.c -o myproject
-//
-// and then run it like:
-//
-//     $ ./myproject 0.0 0.0 10 500 3 test1.txt
-//
-// Of course, that will cause the channel to be perfect, so you should test
-// with a less ideal channel, and you should vary the random seed. However, for
-// testing it can be helpful to keep the seed constant.
-//
-// The simulator will write the received data on entity "B" to a file called
-// `output.dat`.
 
 #include <stdio.h>
 #include "simulator.h"
 #include <limits.h>
 #include <stdlib.h>
 
-/**** GLOBAL FUNCS ****/
-
-void debug_pkt(struct pkt p)
+void printp(struct pkt p)
 {
-    printf("\tseq: %d\n\tack: %d\n\tlen: %d\n", p.seqnum, p.acknum, p.length);
+    printf("\tSYN: %d\n\tACK: %d\n\tLEN: %d\n", p.seqnum, p.acknum, p.length);
 }
 
-/**
- * We would suggest a TCP-like checksum, 
- * which consists of the sum of the (integer) 
- * sequence and ack field values, added to a 
- * character-by-character sum of the valid 
- * payload field of the packet
-*/
 int checksum(struct pkt packet) 
 {
     int sum, i, l;
@@ -99,7 +53,6 @@ struct pkt message_to_packet(struct msg message, int seqnum, int acknum)
         p.payload[i] = message.data[i];
 
     p.checksum = checksum(p);
-
     return p;
 }
 
@@ -118,10 +71,7 @@ struct msg packet_to_message(struct pkt packet)
 }
 
 
-/* QUEUE */
-
 typedef struct queue {
-  //int length;
   struct pkt *buffer;
   int front;
   int rear;
@@ -152,22 +102,17 @@ void enqueue(queue *q, struct pkt p) {
     q->rear = (q->rear + 1)%q->capacity;
     (q->buffer[q->rear]) = p;
     q->size = q->size + 1;
-    //debug_pkt(p);
 }
 void printq(queue *q) {
     int i;
     int start = q->front;
-
     for(i = 0; i < q->size; i++) {
-        printf("packet %i: \n",i);
-        debug_pkt(q->buffer[(i+start)%q->capacity]);
-        printf("---------------\n");
+        printp(q->buffer[(i+start)%q->capacity]);
     }
 }
 struct pkt dequeue(queue *q) {
     struct pkt p;
     if(isempty(q)) {
-        //return a weird packet idk
         p.seqnum = -1;
         p.acknum = -1;
         p.length = -1;
@@ -184,7 +129,6 @@ struct pkt dequeue(queue *q) {
 struct pkt peek(queue *q) {
     struct pkt p;
     if(isempty(q)) {
-        //return a weird packet idk
         p.seqnum = -1;
         p.acknum = -1;
         p.length = -1;
@@ -196,7 +140,6 @@ struct pkt peek(queue *q) {
     }
     return p;
 }
-/**** A ENTITY ****/
 
 #define A_TIMER_LEN 2000.0
 #define BUFSIZE 1000
@@ -205,12 +148,6 @@ int A_seqnum, A_acknum, A_receievedseqnumfromB, A_receivedacknumfromB;
 queue * A_buffer;
 
 int loops;
-
-
-
-/**
- * do i need this?
-*/
 void A_init() 
 {
     loops = 0;
@@ -222,31 +159,17 @@ void A_init()
     starttimer_A(A_TIMER_LEN);
 }
 
-/**
- * construct a packet based on message 'message'
- * call tolayer3_A(packet)
- * (maybe) call starttimer_A
-*/
 void A_output(struct msg message) 
 {
     struct pkt p = message_to_packet(message, A_seqnum, A_acknum);
     enqueue(A_buffer,p);
-    //printq(A_buffer);
     tolayer3_A(p);
     A_seqnum += p.length;
 }
 
-/**
- * called whenever A receives a packet from B
- * these should all be ACK or NACK packets i think
-*/
 void A_input(struct pkt packet) 
 {
-    // debug_pkt(packet);
-    //printf("A Looking for %i, got %i\n", A_receievedseqnumfromB,packet.seqnum);
-    
     if(checksum(packet) != packet.checksum) {
-        //printf("A Recieved corrupted\n");
         return;
     }
     if(packet.acknum > A_seqnum + 1) {
@@ -257,22 +180,11 @@ void A_input(struct pkt packet)
         printf("A doesn't want this packet %i\n", packet.seqnum);
         return;
     }
-    //printf("A RECEIVED PACKET:\n");
-    //debug_pkt(packet);
     while(!isempty(A_buffer) && peek(A_buffer).seqnum < packet.acknum) {
-        
-        //printf("A Just dequeued this: \n");
-        
-        
-        //debug_pkt(dequeue(A_buffer));
         dequeue(A_buffer);
-
-
-        //printf("%i\n",peek(A_buffer).seqnum);
-        //printf("size: %i\n",A_buffer->size);
     }
     A_acknum = packet.seqnum + packet.length;
-    A_receievedseqnumfromB = A_acknum;//packet.acknum;
+    A_receievedseqnumfromB = A_acknum;
     if(packet.acknum > A_receivedacknumfromB ) {
         
         A_receivedacknumfromB = packet.acknum;
@@ -282,50 +194,24 @@ void A_input(struct pkt packet)
     starttimer_A(A_TIMER_LEN);
 }
 
-/**
- * aaa timer ran out!
- * resend last WINDOWSIZE (8) packets
-*/
 void A_timerinterrupt() 
 {
-    // int i;
-    // for(i =0; i < A_buffer->size;i++) {
-    //     //tolayer3_A(dequeue(A_buffer));
-    //     //can't dequeue i have to send everything without dequeuing
-        
-    // }
     int i;
     int start = A_buffer->front;
-    //printf("size of buffer: %i\n", A_buffer->size);
-
     for(i = 0; i < A_buffer->size; i++) {
-        //printf("packet %i: \n",i);
         struct pkt p;
         p = A_buffer->buffer[(i+start)%A_buffer->capacity];
-        //printf("INSIDE");
-        //debug_pkt(p);
         if(p.seqnum >= A_receivedacknumfromB) {
             tolayer3_A(p);
         }
-        //printf("sent packet\n");
-        //printf("---------------\n");
     }
-    //printq(A_buffer);
-    //printf("TIMER INTERRUPT AUUUUUUUUUUGH\n");
-    if(A_buffer->size != 0 /*&& loops < 1000*/) {
+    
+    if(A_buffer->size != 0) {
         loops = loops + 1;
-        //printf("BUFFER ************************** A_receivedacknumfromB: %i\n", A_receivedacknumfromB);
-        //printq(A_buffer);
         starttimer_A(A_TIMER_LEN);
     }
-    else {
-        printf("buffersize:%i",A_buffer->size);
-        printf("DONE!!!");
-    }
+
 }
-
-
-/**** B ENTITY ****/
 
 #define B_TIMER_LEN 1000.0
 int B_seqnum, B_acknum, B_receievedseqnumfromA,timer_count;
@@ -338,38 +224,21 @@ void B_init()
     B_acknum = 1;
 }
 
-/**
- * receive a packet from A
- * call tolayer5_B(msg) with decoded message
- * ALSO sends an ACK back to A
-*/
-
 void B_input(struct pkt packet) 
 {
     timer_count = 0;
-    // debug_pkt(packet);
-    /*
-    if (packet.seqnum != B_acknum)
-        return;*/
-    
-    //printf("B Looking for %i, got %i\n", B_receievedseqnumfromA,packet.seqnum);
     if(checksum(packet) != packet.checksum) {
-        //printf("B Recieved corrupted\n");
         return;
     }
     if (packet.seqnum != B_receievedseqnumfromA){
-        //printf("B doesn't want this packet %i\n", packet.seqnum);
         return;
     }
-    //printf("B RECEIVED PACKET:\n");
-    //debug_pkt(packet);
-    // send packet data to file
+
     struct msg m = packet_to_message(packet);
     tolayer5_B(m);
 
-    // send ACK to A
     B_acknum = packet.seqnum + packet.length;
-    B_receievedseqnumfromA = B_acknum;//packet.seqnum;
+    B_receievedseqnumfromA = B_acknum;
 
     struct pkt p;
     p.seqnum = packet.acknum;
@@ -378,15 +247,10 @@ void B_input(struct pkt packet)
     p.checksum = checksum(p);
 
     tolayer3_B(p);
-    //printf("//////////////////////");
-    //printf("Just sent ACK: %i\n", p.acknum);
     stoptimer_B();
     starttimer_B(B_TIMER_LEN);
 }
 
-/**
- * i think this just re-sends the last ACK
-*/
 void B_timerinterrupt() 
 {
     timer_count = timer_count + 1;
@@ -395,35 +259,11 @@ void B_timerinterrupt()
     p.acknum = B_receievedseqnumfromA;
     p.length = 0;
     p.checksum = checksum(p);
-    //printf("RESENDING FROM B ACK: %i\n",p.acknum);
+    
     tolayer3_B(p);
-    if(/*A_buffer->size > 0 && loops < 1000 && */timer_count < 30){
+    if(timer_count < 30){
         stoptimer_B();
         starttimer_B(B_TIMER_LEN);
     }
 
 }
-
-
-/*TESTING*/
-// void main() {
-    
-//     struct pkt p;
-//     p.seqnum = -1;
-//     p.acknum = -1;
-//     p.length = -1;
-//     p.checksum = -1;
-
-//     queue * q;
-//     q = makeQueue(BUFSIZE);
-//     int i;
-//     for(i =0; i < 3; i++){
-//         enqueue(q,p);
-//     }
-//     for(i = 0; i < 5; i++){
-//         debug_pkt(dequeue(q));
-//     }
-//     printq(q);
-//     //printf("size:%i",q->size);
-//     //debug_pkt(p);
-// }
