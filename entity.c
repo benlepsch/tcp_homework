@@ -88,7 +88,7 @@ struct pkt message_to_packet(struct msg message, int seqnum, int acknum)
     p.length = message.length;
     if (p.length > 20)
         p.length = 20;
-        
+
     int i;
     for (i = 0; i < p.length; i++)
         p.payload[i] = message.data[i];
@@ -102,9 +102,9 @@ struct msg packet_to_message(struct pkt packet)
 {
     struct msg m;
     m.length = packet.length;
-    if(m.length > 20) {
+    if(m.length > 20)
         m.length = 20;
-    }
+
     int i;
     for (i = 0; i < m.length; i++) 
         m.data[i] = packet.payload[i];
@@ -115,7 +115,7 @@ struct msg packet_to_message(struct pkt packet)
 
 /* QUEUE */
 
-typedef struct queue {
+typedef struct Queue {
   //int length;
   struct pkt *buffer;
   int front;
@@ -124,8 +124,7 @@ typedef struct queue {
   unsigned capacity;
 } queue;
 queue* makeQueue(unsigned c) {
-    struct queue* q = (queue*)malloc(
-        sizeof(queue *));
+    struct Queue* q = (queue*)malloc(sizeof(queue *));
     q->capacity = c;
     q->front = q->size = 0; 
     q->rear = q->capacity -1;
