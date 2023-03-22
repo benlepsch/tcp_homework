@@ -123,7 +123,9 @@ typedef struct Queue {
   int size;
   unsigned capacity;
 } queue;
-queue* makeQueue(unsigned c) {
+
+queue* makeQueue(unsigned c) 
+{
     struct Queue* q = (queue*)malloc(sizeof(queue *));
     q->capacity = c;
     q->front = q->size = 0; 
@@ -131,43 +133,51 @@ queue* makeQueue(unsigned c) {
     q->buffer = (struct pkt *)malloc(q->capacity * sizeof(struct pkt));
     return q;
 }
-int full(queue *q ) {
-    return(q->size == q->capacity);
+
+int full(queue *q ) 
+{
+    return (q->size == q->capacity);
 }
-int isempty(queue *q) {
+
+int isempty(queue *q) 
+{
     return (q->size == 0);
 }
-void enqueue(queue *q, struct pkt p) {
-    if(full(q)) {
+
+void enqueue(queue *q, struct pkt p) 
+{
+    if (full(q)) {
         printf("FULL!!%i %i", q->size, q->capacity);
         
         return;
     }
     q->rear = (q->rear + 1)%q->capacity;
-    (q->buffer[q->rear]) = p;
+    q->buffer[q->rear] = p;
     q->size = q->size + 1;
     //debug_pkt(p);
 }
-void printq(queue *q) {
+
+void printq(queue *q) 
+{
     int i;
     int start = q->front;
 
-    for(i = 0; i < q->size; i++) {
+    for (i = 0; i < q->size; i++) {
         printf("packet %i: \n",i);
         debug_pkt(q->buffer[(i+start)%q->capacity]);
         printf("---------------\n");
     }
 }
-struct pkt dequeue(queue *q) {
+
+struct pkt dequeue(queue *q) 
+{
     struct pkt p;
-    if(isempty(q)) {
-        //return a weird packet idk
+    if (isempty(q)) {
         p.seqnum = -1;
         p.acknum = -1;
         p.length = -1;
         p.checksum = -1;
-    }
-    else {
+    } else {
         p = (q->buffer[q->front]);
         q->front = (q->front + 1)% q->capacity;
         q->size = q->size -1;
@@ -175,18 +185,17 @@ struct pkt dequeue(queue *q) {
     return p;
 
 }
-struct pkt peek(queue *q) {
+
+struct pkt peek(queue *q) 
+{
     struct pkt p;
-    if(isempty(q)) {
-        //return a weird packet idk
+    if (isempty(q)) {
         p.seqnum = -1;
         p.acknum = -1;
         p.length = -1;
         p.checksum = -1;
-    }
-    else {
+    } else {
         p = (q->buffer[q->front]);
-        
     }
     return p;
 }
@@ -225,7 +234,7 @@ void A_init()
 void A_output(struct msg message) 
 {
     struct pkt p = message_to_packet(message, A_seqnum, A_acknum);
-    enqueue(A_buffer,p);
+    enqueue(A_buffer, p);
     //printq(A_buffer);
     tolayer3_A(p);
     A_seqnum += p.length;
@@ -254,22 +263,13 @@ void A_input(struct pkt packet)
     }
     //printf("A RECEIVED PACKET:\n");
     //debug_pkt(packet);
-    while(!isempty(A_buffer) && peek(A_buffer).seqnum < packet.acknum) {
-        
-        //printf("A Just dequeued this: \n");
-        
-        
-        //debug_pkt(dequeue(A_buffer));
+    while(!isempty(A_buffer) && (peek(A_buffer).seqnum < packet.acknum)) {
         dequeue(A_buffer);
-
-
-        //printf("%i\n",peek(A_buffer).seqnum);
-        //printf("size: %i\n",A_buffer->size);
     }
+
     A_acknum = packet.seqnum + packet.length;
     A_receievedseqnumfromB = A_acknum;//packet.acknum;
-    if(packet.acknum > A_receivedacknumfromB ) {
-        
+    if (packet.acknum > A_receivedacknumfromB) {
         A_receivedacknumfromB = packet.acknum;
         printf("Updated A_receivedacknumfromB to %i\n", A_receivedacknumfromB);
     }
@@ -283,20 +283,13 @@ void A_input(struct pkt packet)
 */
 void A_timerinterrupt() 
 {
-    // int i;
-    // for(i =0; i < A_buffer->size;i++) {
-    //     //tolayer3_A(dequeue(A_buffer));
-    //     //can't dequeue i have to send everything without dequeuing
-        
-    // }
     int i;
-    int start = A_buffer->front;
     //printf("size of buffer: %i\n", A_buffer->size);
 
     for(i = 0; i < A_buffer->size; i++) {
         //printf("packet %i: \n",i);
         struct pkt p;
-        p = A_buffer->buffer[(i+start)%A_buffer->capacity];
+        p = A_buffer->buffer[(i+A_buffer->front)%A_buffer->capacity];
         //printf("INSIDE");
         //debug_pkt(p);
         if(p.seqnum >= A_receivedacknumfromB) {
@@ -307,15 +300,12 @@ void A_timerinterrupt()
     }
     //printq(A_buffer);
     //printf("TIMER INTERRUPT AUUUUUUUUUUGH\n");
-    if(A_buffer->size != 0 /*&& loops < 1000*/) {
+    if(A_buffer->size != 0) {
         loops = loops + 1;
-        //printf("BUFFER ************************** A_receivedacknumfromB: %i\n", A_receivedacknumfromB);
-        //printq(A_buffer);
         starttimer_A(A_TIMER_LEN);
     }
     else {
-        printf("buffersize:%i",A_buffer->size);
-        printf("DONE!!!");
+        // done
         stoptimer_A();
     }
 }
@@ -347,7 +337,7 @@ void B_input(struct pkt packet)
     if (packet.seqnum != B_acknum)
         return;*/
     nC = 0;
-    //printf("B Looking for %i, got %i\n", B_receievedseqnumfromA,packet.seqnum);
+    
     if(checksum(packet) != packet.checksum) {
         //printf("B Recieved corrupted\n");
         return;
@@ -388,40 +378,17 @@ void B_timerinterrupt()
         stoptimer_B();
         return;
     }
+
     nC ++;
     struct pkt p;
     p.seqnum = 1;
     p.acknum = B_receievedseqnumfromA;
     p.length = 0;
     p.checksum = checksum(p);
-    //printf("RESENDING FROM B ACK: %i\n",p.acknum);
+    
     tolayer3_B(p);
-    if(A_buffer->size > 0 /*&& loops < 1000*/){
+    if(A_buffer->size > 0){
         stoptimer_B();
         starttimer_B(B_TIMER_LEN);
     }
 }
-
-
-/*TESTING*/
-// void main() {
-    
-//     struct pkt p;
-//     p.seqnum = -1;
-//     p.acknum = -1;
-//     p.length = -1;
-//     p.checksum = -1;
-
-//     queue * q;
-//     q = makeQueue(BUFSIZE);
-//     int i;
-//     for(i =0; i < 3; i++){
-//         enqueue(q,p);
-//     }
-//     for(i = 0; i < 5; i++){
-//         debug_pkt(dequeue(q));
-//     }
-//     printq(q);
-//     //printf("size:%i",q->size);
-//     //debug_pkt(p);
-// }
