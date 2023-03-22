@@ -102,13 +102,6 @@ void add(queue *q, struct pkt p) {
     (q->buffer[q->rear]) = p;
     q->size = q->size + 1;
 }
-void printq(queue *q) {
-    int i;
-    int start = q->front;
-    for(i = 0; i < q->size; i++) {
-        printp(q->buffer[(i+start)%q->capacity]);
-    }
-}
 struct pkt pop(queue *q) {
     struct pkt p;
     if(isempty(q)) {
