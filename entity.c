@@ -146,7 +146,7 @@ struct pkt peek(queue *q) {
 #define ATIMER 2000.0
 #define BUFFER 1000
 
-int aseqnum, aacknum, aseqfrom_b, aackfrom_B;
+int aseqnum, aacknum, aseqfrom_b, aackfrom_b;
 queue * abuffer;
 
 void A_init() 
@@ -154,7 +154,7 @@ void A_init()
     aseqnum = 1;
     aacknum = 1;
     aseqfrom_b = 1;
-    aackfrom_B = 0;
+    aackfrom_b = 0;
 
     abuffer = initalizequeue(BUFFER);
     starttimer_A(ATIMER);
@@ -184,9 +184,9 @@ void A_input(struct pkt packet)
     }
     aacknum = packet.seqnum + packet.length;
     aseqfrom_b = aacknum;
-    if(packet.acknum > aackfrom_B ) {
-        aackfrom_B = packet.acknum;
-        printf("Got ACK back: %i\n",aackfrom_B);
+    if(packet.acknum > aackfrom_b ) {
+        aackfrom_b = packet.acknum;
+        printf("Got ACK back: %i\n",aackfrom_b);
     }
     stoptimer_A();
     starttimer_A(ATIMER);
@@ -199,7 +199,7 @@ void A_timerinterrupt()
     for(i = 0; i < abuffer->size; i++) {
         struct pkt p;
         p = abuffer->buffer[(i+start)%abuffer->capacity];
-        if(p.seqnum >= aackfrom_B) {
+        if(p.seqnum >= aackfrom_b) {
             tolayer3_A(p);
         }
     }
