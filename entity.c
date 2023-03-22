@@ -66,19 +66,16 @@ void debug_pkt(struct pkt p)
 */
 int checksum(struct pkt packet) 
 {
-    int sum, i, l;
+    int sum, i;
 
-    if(packet.length > 20) {
-        l = 20;
-    }
-    else {
-        l = packet.length;
-    }
     sum = packet.seqnum;
     sum += packet.acknum;
     sum += packet.length;
-    for (i = 0; i < l; i++)
+    for (i = 0; i < packet.length; i++) {
+        if (i > 19)
+            break;
         sum += packet.payload[i];
+    }
 
     return sum;
 }
@@ -88,12 +85,10 @@ struct pkt message_to_packet(struct msg message, int seqnum, int acknum)
     struct pkt p;
     p.seqnum = seqnum;
     p.acknum = acknum;
-    if(message.length > 20) {
+    p.length = message.length;
+    if (p.length > 20)
         p.length = 20;
-    }
-    else {
-        p.length = message.length;
-    }
+        
     int i;
     for (i = 0; i < p.length; i++)
         p.payload[i] = message.data[i];
