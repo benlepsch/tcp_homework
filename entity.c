@@ -13,10 +13,6 @@
 #include <limits.h>
 #include <stdlib.h>
 
-void printp(struct pkt p)
-{
-    printf("\tSYN: %d\n\tACK: %d\n\tLEN: %d\n", p.seqnum, p.acknum, p.length);
-}
 
 int checksum(struct pkt packet) 
 {
@@ -37,6 +33,21 @@ int checksum(struct pkt packet)
     return sum;
 }
 
+
+
+struct msg packet_to_message(struct pkt packet)
+{
+    struct msg m;
+    m.length = packet.length;
+    if(m.length > 20) {
+        m.length = 20;
+    }
+    int i;
+    for (i = 0; i < m.length; i++) 
+        m.data[i] = packet.payload[i];
+    
+    return m;
+}
 struct pkt message_to_packet(struct msg message, int seqnum, int acknum)
 {
     struct pkt p;
@@ -56,20 +67,11 @@ struct pkt message_to_packet(struct msg message, int seqnum, int acknum)
     return p;
 }
 
-struct msg packet_to_message(struct pkt packet)
-{
-    struct msg m;
-    m.length = packet.length;
-    if(m.length > 20) {
-        m.length = 20;
-    }
-    int i;
-    for (i = 0; i < m.length; i++) 
-        m.data[i] = packet.payload[i];
-    
-    return m;
-}
 
+void printp(struct pkt p)
+{
+    printf("\tSYN: %d\n\tACK: %d\n\tLEN: %d\n", p.seqnum, p.acknum, p.length);
+}
 
 typedef struct queue {
   struct pkt *buffer;
@@ -78,7 +80,7 @@ typedef struct queue {
   int size;
   unsigned capacity;
 } queue;
-queue* makeQueue(unsigned c) {
+queue* initalizequeue(unsigned c) {
     struct queue* q = (queue*)malloc(
         sizeof(queue *));
     q->capacity = c;
@@ -141,30 +143,29 @@ struct pkt peek(queue *q) {
     return p;
 }
 
-#define A_TIMER_LEN 2000.0
-#define BUFSIZE 1000
+#define ATIMER 2000.0
+#define BUFFER 1000
 
-int A_seqnum, A_acknum, A_receievedseqnumfromB, A_receivedacknumfromB;
-queue * A_buffer;
+int aseqnum, aacknum, aseqfrom_b, aackfrom_B;
+queue * abuffer;
 
-int loops;
 void A_init() 
 {
-    loops = 0;
-    A_seqnum = 1;
-    A_acknum = 1;
-    A_receievedseqnumfromB = 1;
-    A_receivedacknumfromB = 0;
-    A_buffer = makeQueue(BUFSIZE);
-    starttimer_A(A_TIMER_LEN);
+    aseqnum = 1;
+    aacknum = 1;
+    aseqfrom_b = 1;
+    aackfrom_B = 0;
+
+    abuffer = initalizequeue(BUFFER);
+    starttimer_A(ATIMER);
 }
 
 void A_output(struct msg message) 
 {
-    struct pkt p = message_to_packet(message, A_seqnum, A_acknum);
-    enqueue(A_buffer,p);
+    struct pkt p = message_to_packet(message, aseqnum, aacknum);
+    enqueue(abuffer,p);
     tolayer3_A(p);
-    A_seqnum += p.length;
+    aseqnum += p.length;
 }
 
 void A_input(struct pkt packet) 
@@ -172,56 +173,52 @@ void A_input(struct pkt packet)
     if(checksum(packet) != packet.checksum) {
         return;
     }
-    if(packet.acknum > A_seqnum + 1) {
-        printf("packet had acknum %i which is greater than our seqnum + 1: %i\n", packet.acknum, A_seqnum + 1);
+    if(packet.acknum > aseqnum + 1) {
         return;
     }
-    if (packet.seqnum != A_receievedseqnumfromB){
-        printf("A doesn't want this packet %i\n", packet.seqnum);
+    if (packet.seqnum != aseqfrom_b){
         return;
     }
-    while(!isempty(A_buffer) && peek(A_buffer).seqnum < packet.acknum) {
-        dequeue(A_buffer);
+    while(!isempty(abuffer) && peek(abuffer).seqnum < packet.acknum) {
+        dequeue(abuffer);
     }
-    A_acknum = packet.seqnum + packet.length;
-    A_receievedseqnumfromB = A_acknum;
-    if(packet.acknum > A_receivedacknumfromB ) {
-        
-        A_receivedacknumfromB = packet.acknum;
-        printf("Updated A_receivedacknumfromB to %i\n", A_receivedacknumfromB);
+    aacknum = packet.seqnum + packet.length;
+    aseqfrom_b = aacknum;
+    if(packet.acknum > aackfrom_B ) {
+        aackfrom_B = packet.acknum;
+        printf("Got ACK back: %i\n",aackfrom_B);
     }
     stoptimer_A();
-    starttimer_A(A_TIMER_LEN);
+    starttimer_A(ATIMER);
 }
 
 void A_timerinterrupt() 
 {
     int i;
-    int start = A_buffer->front;
-    for(i = 0; i < A_buffer->size; i++) {
+    int start = abuffer->front;
+    for(i = 0; i < abuffer->size; i++) {
         struct pkt p;
-        p = A_buffer->buffer[(i+start)%A_buffer->capacity];
-        if(p.seqnum >= A_receivedacknumfromB) {
+        p = abuffer->buffer[(i+start)%abuffer->capacity];
+        if(p.seqnum >= aackfrom_B) {
             tolayer3_A(p);
         }
     }
     
-    if(A_buffer->size != 0) {
-        loops = loops + 1;
-        starttimer_A(A_TIMER_LEN);
+    if(abuffer->size != 0) {
+        starttimer_A(ATIMER);
     }
 
 }
 
-#define B_TIMER_LEN 1000.0
-int B_seqnum, B_acknum, B_receievedseqnumfromA,timer_count;
+#define BTIMER 1000.0
+int bseqnum, backnum, bseqfrom_A,timer_count;
 
 void B_init() 
 {
     timer_count = 0;
-    B_receievedseqnumfromA = 1;
-    B_seqnum = 1;
-    B_acknum = 1;
+    bseqfrom_A = 1;
+    bseqnum = 1;
+    backnum = 1;
 }
 
 void B_input(struct pkt packet) 
@@ -230,25 +227,25 @@ void B_input(struct pkt packet)
     if(checksum(packet) != packet.checksum) {
         return;
     }
-    if (packet.seqnum != B_receievedseqnumfromA){
+    if (packet.seqnum != bseqfrom_A){
         return;
     }
 
     struct msg m = packet_to_message(packet);
     tolayer5_B(m);
 
-    B_acknum = packet.seqnum + packet.length;
-    B_receievedseqnumfromA = B_acknum;
+    backnum = packet.seqnum + packet.length;
+    bseqfrom_A = backnum;
 
     struct pkt p;
     p.seqnum = packet.acknum;
-    p.acknum = B_acknum;
+    p.acknum = backnum;
     p.length = 0;
     p.checksum = checksum(p);
 
     tolayer3_B(p);
     stoptimer_B();
-    starttimer_B(B_TIMER_LEN);
+    starttimer_B(BTIMER);
 }
 
 void B_timerinterrupt() 
@@ -256,14 +253,14 @@ void B_timerinterrupt()
     timer_count = timer_count + 1;
     struct pkt p;
     p.seqnum = 1;
-    p.acknum = B_receievedseqnumfromA;
+    p.acknum = bseqfrom_A;
     p.length = 0;
     p.checksum = checksum(p);
     
     tolayer3_B(p);
     if(timer_count < 30){
         stoptimer_B();
-        starttimer_B(B_TIMER_LEN);
+        starttimer_B(BTIMER);
     }
 
 }
