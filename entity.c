@@ -80,10 +80,9 @@ typedef struct queue {
   int size;
   unsigned capacity;
 } queue;
-queue* initalizequeue(unsigned c) {
-    struct queue* q = (queue*)malloc(
-        sizeof(queue *));
-    q->capacity = c;
+queue* initalizequeue(unsigned capacity) {
+    struct queue* q = (queue*)malloc(sizeof(queue *));
+    q->capacity = capacity;
     q->front = q->size = 0; 
     q->rear = q->capacity -1;
     q->buffer = (struct pkt *)malloc(q->capacity * sizeof(struct pkt));
@@ -95,10 +94,8 @@ int full(queue *q ) {
 int isempty(queue *q) {
     return (q->size == 0);
 }
-void enqueue(queue *q, struct pkt p) {
+void add(queue *q, struct pkt p) {
     if(full(q)) {
-        printf("FULL!!%i %i", q->size, q->capacity);
-        
         return;
     }
     q->rear = (q->rear + 1)%q->capacity;
@@ -112,7 +109,7 @@ void printq(queue *q) {
         printp(q->buffer[(i+start)%q->capacity]);
     }
 }
-struct pkt dequeue(queue *q) {
+struct pkt pop(queue *q) {
     struct pkt p;
     if(isempty(q)) {
         p.seqnum = -1;
@@ -128,7 +125,7 @@ struct pkt dequeue(queue *q) {
     return p;
 
 }
-struct pkt peek(queue *q) {
+struct pkt look(queue *q) {
     struct pkt p;
     if(isempty(q)) {
         p.seqnum = -1;
@@ -163,7 +160,7 @@ void A_init()
 void A_output(struct msg message) 
 {
     struct pkt p = message_to_packet(message, aseqnum, aacknum);
-    enqueue(abuffer,p);
+    add(abuffer,p);
     tolayer3_A(p);
     aseqnum += p.length;
 }
@@ -179,8 +176,8 @@ void A_input(struct pkt packet)
     if (packet.seqnum != aseqfrom_b){
         return;
     }
-    while(!isempty(abuffer) && peek(abuffer).seqnum < packet.acknum) {
-        dequeue(abuffer);
+    while(!isempty(abuffer) && look(abuffer).seqnum < packet.acknum) {
+        pop(abuffer);
     }
     aacknum = packet.seqnum + packet.length;
     aseqfrom_b = aacknum;
